@@ -83,14 +83,38 @@ class TournamentApp:
             return
 
         try:
-            bracket = self.create_bracket(self.teams)
+            matchups = self.calculate_matchups(self.teams)
+            bracket = [(self.teams[i], self.teams[j]) for i, j in matchups]
             self.display_bracket(bracket)
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
-    def create_bracket(self, teams):
+    def calculate_matchups(self, teams):
         teams = sorted(teams, key=lambda t: t.coefficient, reverse=True)
-        return [[team] for team in teams]
+
+        def is_valid_matchup(team1, team2):
+            return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= 20
+
+        def forward_checking(remaining_teams, matchups):
+            if len(matchups) == len(teams) // 2:
+                return matchups
+
+            for i in range(len(remaining_teams)):
+                for j in range(i + 1, len(remaining_teams)):
+                    team1, team2 = remaining_teams[i], remaining_teams[j]
+                    if is_valid_matchup(team1, team2):
+                        matchups.append((teams.index(team1), teams.index(team2)))
+                        next_remaining = [t for k, t in enumerate(remaining_teams) if k not in (i, j)]
+                        result = forward_checking(next_remaining, matchups)
+                        if result:
+                            return result
+                        matchups.pop()
+            return None
+
+        matchups = forward_checking(teams, [])
+        if not matchups:
+            raise ValueError("No valid matchups found with the given constraints.")
+        return matchups
 
     def display_bracket(self, bracket):
         bracket_window = tk.Toplevel(self.root)
@@ -101,44 +125,20 @@ class TournamentApp:
 
         spacing = 50
         line_length = 100
-        short_line_length = 50
         start_x = 50
         start_y = 20
 
-        current_level = bracket
-        positions = []
-        while len(current_level) > 1:
-            next_level = []
-            new_positions = []
+        for i, (team1, team2) in enumerate(bracket):
+            y1 = start_y + i * spacing * 2
+            y2 = y1 + spacing
 
-            for i in range(0, len(current_level), 2):
-                if i + 1 < len(current_level):
-                    y1 = positions[i] if positions else start_y + i * spacing
-                    y2 = positions[i + 1] if positions else start_y + (i + 1) * spacing
-                    mid_y = (y1 + y2) // 2
+            canvas.create_text(start_x, y1, text=team1.get_name(), anchor="w", font=("Helvetica", 10))
+            canvas.create_text(start_x, y2, text=team2.get_name(), anchor="w", font=("Helvetica", 10))
 
-                    if not positions:  # First pass, add team names
-                        team1 = current_level[i][0].get_name()
-                        team2 = current_level[i + 1][0].get_name()
-
-                        canvas.create_text(start_x, y1, text=team1, anchor="w", font=("Helvetica", 10))
-                        canvas.create_text(start_x, y2, text=team2, anchor="w", font=("Helvetica", 10))
-
-                    canvas.create_line(start_x + 50, y1, start_x + 50 + line_length, y1)
-                    canvas.create_line(start_x + 50, y2, start_x + 50 + line_length, y2)
-                    canvas.create_line(start_x + 50 + line_length, y1, start_x + 50 + line_length, y2)
-
-                    if len(current_level) > 2:
-                        canvas.create_line(start_x + 50 + line_length, mid_y, start_x + 50 + line_length + short_line_length, mid_y)
-
-                    next_level.append([current_level[i][0]])
-                    new_positions.append(mid_y)
-
-            current_level = next_level
-            positions = new_positions
-            start_x += line_length + short_line_length
-
-        canvas.create_line(start_x, positions[0], start_x + line_length, positions[0])
+            canvas.create_line(start_x + 50, y1, start_x + 50 + line_length, y1)
+            canvas.create_line(start_x + 50, y2, start_x + 50 + line_length, y2)
+            canvas.create_line(start_x + 50 + line_length, y1, start_x + 50 + line_length, y2)
+            canvas.create_line(start_x + 50 + line_length, (y1 + y2) // 2, start_x + 50 + line_length + 50, (y1 + y2) // 2)
 
 if __name__ == "__main__":
     root = tk.Tk()
