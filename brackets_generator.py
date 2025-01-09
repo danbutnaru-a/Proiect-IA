@@ -1,7 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox
 
-
 class Team:
     def __init__(self, name, division, coefficient):
         self.name = name
@@ -11,6 +10,8 @@ class Team:
     def __repr__(self):
         return f"{self.name} (Div: {self.division}, Coef: {self.coefficient})"
 
+    def get_name(self):
+        return self.name
 
 class TournamentApp:
     def __init__(self, root):
@@ -18,7 +19,6 @@ class TournamentApp:
         self.root.title("Tournament Bracket Generator")
         self.teams = []
 
-        # UI Elements
         self.title_label = tk.Label(root, text="Add Teams to the Tournament", font=("Helvetica", 16))
         self.title_label.pack(pady=10)
 
@@ -52,7 +52,6 @@ class TournamentApp:
         self.teams_listbox.pack()
 
     def add_team(self):
-        # Get user input
         name = self.name_entry.get().strip()
         division = self.division_entry.get().strip()
         try:
@@ -65,19 +64,22 @@ class TournamentApp:
             messagebox.showerror("Invalid Input", "All fields are required and coefficient must be positive.")
             return
 
-        # Add the team to the list
         team = Team(name, division, coefficient)
         self.teams.append(team)
-        self.teams_listbox.insert(tk.END, str(team))
+        self.teams_listbox.insert(tk.END, repr(team))
 
-        # Clear input fields
         self.name_entry.delete(0, tk.END)
         self.division_entry.delete(0, tk.END)
         self.coefficient_entry.delete(0, tk.END)
 
     def generate_bracket(self):
-        if len(self.teams) < 2 or len(self.teams) % 2 != 0:
-            messagebox.showerror("Invalid Teams", "You need an even number of teams to generate a bracket.")
+        if len(self.teams) < 2:
+            messagebox.showerror("Invalid Teams", "You need at least 2 teams to generate a bracket.")
+            return
+
+        num_teams = len(self.teams)
+        if (num_teams & (num_teams - 1)) != 0:
+            messagebox.showerror("Invalid Teams", "Number of teams must be a power of 2 (e.g., 2, 4, 8, 16).")
             return
 
         try:
@@ -88,40 +90,55 @@ class TournamentApp:
 
     def create_bracket(self, teams):
         teams = sorted(teams, key=lambda t: t.coefficient, reverse=True)
-
-        def is_valid_matchup(team1, team2):
-            return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= 15
-
-        def backtracking(teams, matchups=[]):
-            if len(matchups) == len(teams) // 2:
-                return matchups
-
-            remaining_teams = [team for team in teams if team not in [t for pair in matchups for t in pair]]
-            for i in range(len(remaining_teams)):
-                for j in range(i + 1, len(remaining_teams)):
-                    team1, team2 = remaining_teams[i], remaining_teams[j]
-                    if is_valid_matchup(team1, team2):
-                        matchups.append((team1, team2))
-                        result = backtracking(teams, matchups)
-                        if result:
-                            return result
-                        matchups.pop()
-            return None
-
-        bracket = backtracking(teams)
-        if not bracket:
-            raise ValueError("No valid tournament bracket can be generated with the given constraints.")
-        return bracket
+        return [[team] for team in teams]
 
     def display_bracket(self, bracket):
         bracket_window = tk.Toplevel(self.root)
         bracket_window.title("Tournament Bracket")
-        label = tk.Label(bracket_window, text="Tournament Bracket", font=("Helvetica", 16))
-        label.pack(pady=10)
-        for match in bracket:
-            match_label = tk.Label(bracket_window, text=f"{match[0]} vs {match[1]}")
-            match_label.pack()
 
+        canvas = tk.Canvas(bracket_window, width=800, height=600, bg="white")
+        canvas.pack()
+
+        spacing = 50
+        line_length = 100
+        short_line_length = 50
+        start_x = 50
+        start_y = 20
+
+        current_level = bracket
+        positions = []
+        while len(current_level) > 1:
+            next_level = []
+            new_positions = []
+
+            for i in range(0, len(current_level), 2):
+                if i + 1 < len(current_level):
+                    y1 = positions[i] if positions else start_y + i * spacing
+                    y2 = positions[i + 1] if positions else start_y + (i + 1) * spacing
+                    mid_y = (y1 + y2) // 2
+
+                    if not positions:  # First pass, add team names
+                        team1 = current_level[i][0].get_name()
+                        team2 = current_level[i + 1][0].get_name()
+
+                        canvas.create_text(start_x, y1, text=team1, anchor="w", font=("Helvetica", 10))
+                        canvas.create_text(start_x, y2, text=team2, anchor="w", font=("Helvetica", 10))
+
+                    canvas.create_line(start_x + 50, y1, start_x + 50 + line_length, y1)
+                    canvas.create_line(start_x + 50, y2, start_x + 50 + line_length, y2)
+                    canvas.create_line(start_x + 50 + line_length, y1, start_x + 50 + line_length, y2)
+
+                    if len(current_level) > 2:
+                        canvas.create_line(start_x + 50 + line_length, mid_y, start_x + 50 + line_length + short_line_length, mid_y)
+
+                    next_level.append([current_level[i][0]])
+                    new_positions.append(mid_y)
+
+            current_level = next_level
+            positions = new_positions
+            start_x += line_length + short_line_length
+
+        canvas.create_line(start_x, positions[0], start_x + line_length, positions[0])
 
 if __name__ == "__main__":
     root = tk.Tk()
