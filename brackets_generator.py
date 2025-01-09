@@ -125,7 +125,6 @@ class TournamentApp:
 
         spacing = 50
         line_length = 100
-        short_line_length = 50
         start_x = 50
         start_y = 20
 
@@ -144,7 +143,7 @@ class TournamentApp:
             mid_y = (y1 + y2) // 2
             positions.append(mid_y)
 
-        # Draw the subsequent levels of the bracket
+        # Restul de nivele
         current_positions = positions
         current_start_x = start_x + 50 + line_length
         while len(current_positions) > 1:
@@ -163,7 +162,7 @@ class TournamentApp:
             current_positions = next_positions
             current_start_x += line_length
 
-        # Draw the final line
+        # Ultima linie
         if current_positions:
             canvas.create_line(current_start_x, current_positions[0], current_start_x + line_length, current_positions[0])
 
