@@ -125,9 +125,11 @@ class TournamentApp:
 
         spacing = 50
         line_length = 100
+        short_line_length = 50
         start_x = 50
         start_y = 20
 
+        positions = []
         for i, (team1, team2) in enumerate(bracket):
             y1 = start_y + i * spacing * 2
             y2 = y1 + spacing
@@ -138,7 +140,32 @@ class TournamentApp:
             canvas.create_line(start_x + 50, y1, start_x + 50 + line_length, y1)
             canvas.create_line(start_x + 50, y2, start_x + 50 + line_length, y2)
             canvas.create_line(start_x + 50 + line_length, y1, start_x + 50 + line_length, y2)
-            canvas.create_line(start_x + 50 + line_length, (y1 + y2) // 2, start_x + 50 + line_length + 50, (y1 + y2) // 2)
+
+            mid_y = (y1 + y2) // 2
+            positions.append(mid_y)
+
+        # Draw the subsequent levels of the bracket
+        current_positions = positions
+        current_start_x = start_x + 50 + line_length
+        while len(current_positions) > 1:
+            next_positions = []
+            for i in range(0, len(current_positions), 2):
+                y1 = current_positions[i]
+                y2 = current_positions[i + 1]
+                mid_y = (y1 + y2) // 2
+
+                canvas.create_line(current_start_x, y1, current_start_x + line_length, y1)
+                canvas.create_line(current_start_x, y2, current_start_x + line_length, y2)
+                canvas.create_line(current_start_x + line_length, y1, current_start_x + line_length, y2)
+
+                next_positions.append(mid_y)
+
+            current_positions = next_positions
+            current_start_x += line_length
+
+        # Draw the final line
+        if current_positions:
+            canvas.create_line(current_start_x, current_positions[0], current_start_x + line_length, current_positions[0])
 
 if __name__ == "__main__":
     root = tk.Tk()
