@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
+import csv
 
 class Team:
     def __init__(self, name, division, coefficient):
@@ -43,6 +44,9 @@ class TournamentApp:
         self.add_button = tk.Button(root, text="Add Team", command=self.add_team)
         self.add_button.pack(pady=10)
 
+        self.upload_button = tk.Button(root, text="Upload Teams from File", command=self.upload_teams)
+        self.upload_button.pack(pady=10)
+
         self.generate_button = tk.Button(root, text="Generate Bracket", command=self.generate_bracket)
         self.generate_button.pack(pady=10)
 
@@ -72,6 +76,35 @@ class TournamentApp:
         self.division_entry.delete(0, tk.END)
         self.coefficient_entry.delete(0, tk.END)
 
+    def upload_teams(self):
+        file_path = filedialog.askopenfilename(title="Select File", filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, mode='r') as file:
+                reader = csv.reader(file)
+                next(reader, None)
+                for row in reader:
+                    if len(row) != 3:
+                        messagebox.showerror("Invalid Format", "Each line must have exactly 3 values: Name, Division, Coefficient.")
+                        return
+                    name, division, coefficient = row
+                    try:
+                        coefficient = int(coefficient)
+                    except ValueError:
+                        messagebox.showerror("Invalid Input", f"Invalid coefficient for team {name}. Must be an integer.")
+                        return
+                    if not name or not division or coefficient <= 0:
+                        messagebox.showerror("Invalid Input", f"Invalid data for team {name}. All fields are required, and coefficient must be positive.")
+                        return
+                    team = Team(name, division, coefficient)
+                    self.teams.append(team)
+                    self.teams_listbox.insert(tk.END, repr(team))
+            messagebox.showinfo("Success", "Teams successfully loaded from file.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load teams from file: {str(e)}")
+
     def generate_bracket(self):
         if len(self.teams) < 2:
             messagebox.showerror("Invalid Teams", "You need at least 2 teams to generate a bracket.")
@@ -83,6 +116,7 @@ class TournamentApp:
             return
 
         try:
+            self.teams = sorted(self.teams, key=lambda t: t.coefficient, reverse=True)
             matchups = self.calculate_matchups(self.teams)
             bracket = [(self.teams[i], self.teams[j]) for i, j in matchups]
             self.display_bracket(bracket)
@@ -90,7 +124,7 @@ class TournamentApp:
             messagebox.showerror("Error", str(e))
 
     def calculate_matchups(self, teams):
-        teams = sorted(teams, key=lambda t: t.coefficient, reverse=True)
+
 
         def is_valid_matchup(team1, team2):
             return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= 20
