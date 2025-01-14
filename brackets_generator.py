@@ -18,6 +18,7 @@ class TournamentApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Tournament Bracket Generator")
+        self.root.geometry("800x600")  # Dimensiunea fixă a ferestrei principale
         self.teams = []
 
         self.title_label = tk.Label(root, text="Add Teams to the Tournament", font=("Helvetica", 16))
@@ -53,8 +54,21 @@ class TournamentApp:
         self.teams_label = tk.Label(root, text="Teams Added:", font=("Helvetica", 14))
         self.teams_label.pack(pady=5)
 
-        self.teams_frame = tk.Frame(root)
-        self.teams_frame.pack()
+        # Scrollable frame for teams
+        self.teams_frame_container = tk.Frame(root)
+        self.teams_frame_container.pack(fill=tk.BOTH, expand=True)
+
+        self.teams_canvas = tk.Canvas(self.teams_frame_container)
+        self.teams_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.scrollbar = tk.Scrollbar(self.teams_frame_container, orient="vertical", command=self.teams_canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.teams_canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.teams_canvas.bind('<Configure>', lambda e: self.teams_canvas.configure(scrollregion=self.teams_canvas.bbox("all")))
+
+        self.teams_frame = tk.Frame(self.teams_canvas)
+        self.teams_canvas.create_window((0, 0), window=self.teams_frame, anchor="nw")
 
     def add_team(self):
         name = self.name_entry.get().strip()
@@ -89,6 +103,10 @@ class TournamentApp:
 
         remove_button = tk.Button(team_frame, text="Remove", command=lambda: self.remove_team(team, team_frame))
         remove_button.pack(side=tk.RIGHT, padx=5)
+
+        # Update the scrollbar to accommodate new content
+        self.teams_canvas.update_idletasks()
+        self.teams_canvas.configure(scrollregion=self.teams_canvas.bbox("all"))
 
     def edit_team(self, team, team_frame, team_label):
         edit_window = tk.Toplevel(self.root)
@@ -136,6 +154,10 @@ class TournamentApp:
         self.teams.remove(team)
         team_frame.destroy()
 
+        # Update the scrollbar to accommodate removed content
+        self.teams_canvas.update_idletasks()
+        self.teams_canvas.configure(scrollregion=self.teams_canvas.bbox("all"))
+
     def upload_teams(self):
         file_path = filedialog.askopenfilename(title="Select File", filetypes=[("CSV Files", "*.csv")])
         if not file_path:
@@ -144,7 +166,7 @@ class TournamentApp:
         try:
             with open(file_path, mode='r') as file:
                 reader = csv.reader(file)
-                next(reader, None)
+                next(reader, None)  # Omit the header row
                 for row in reader:
                     if len(row) != 3:
                         messagebox.showerror("Invalid Format", "Each line must have exactly 3 values: Name, Division, Coefficient.")
@@ -160,7 +182,7 @@ class TournamentApp:
                         return
                     team = Team(name, division, coefficient)
                     self.teams.append(team)
-                    self.display_team(team)
+                    self.display_team(team)  # Use display_team to show in the scrollable area
             messagebox.showinfo("Success", "Teams successfully loaded from file.")
         except Exception as e:
             messagebox.showerror("Error", f"Could not load teams from file: {str(e)}")
