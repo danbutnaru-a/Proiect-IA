@@ -52,8 +52,9 @@ class TournamentApp:
 
         self.teams_label = tk.Label(root, text="Teams Added:", font=("Helvetica", 14))
         self.teams_label.pack(pady=5)
-        self.teams_listbox = tk.Listbox(root, width=50, height=10)
-        self.teams_listbox.pack()
+
+        self.teams_frame = tk.Frame(root)
+        self.teams_frame.pack()
 
     def add_team(self):
         name = self.name_entry.get().strip()
@@ -70,11 +71,70 @@ class TournamentApp:
 
         team = Team(name, division, coefficient)
         self.teams.append(team)
-        self.teams_listbox.insert(tk.END, repr(team))
+        self.display_team(team)
 
         self.name_entry.delete(0, tk.END)
         self.division_entry.delete(0, tk.END)
         self.coefficient_entry.delete(0, tk.END)
+
+    def display_team(self, team):
+        team_frame = tk.Frame(self.teams_frame)
+        team_frame.pack(fill=tk.X, pady=2)
+
+        team_label = tk.Label(team_frame, text=repr(team), anchor="w")
+        team_label.pack(side=tk.LEFT, expand=True, fill=tk.X)
+
+        edit_button = tk.Button(team_frame, text="Edit", command=lambda: self.edit_team(team, team_frame, team_label))
+        edit_button.pack(side=tk.RIGHT, padx=5)
+
+        remove_button = tk.Button(team_frame, text="Remove", command=lambda: self.remove_team(team, team_frame))
+        remove_button.pack(side=tk.RIGHT, padx=5)
+
+    def edit_team(self, team, team_frame, team_label):
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title("Edit Team")
+
+        tk.Label(edit_window, text="Team Name:").grid(row=0, column=0, padx=5, pady=5)
+        name_entry = tk.Entry(edit_window)
+        name_entry.grid(row=0, column=1, padx=5, pady=5)
+        name_entry.insert(0, team.name)
+
+        tk.Label(edit_window, text="Division:").grid(row=1, column=0, padx=5, pady=5)
+        division_entry = tk.Entry(edit_window)
+        division_entry.grid(row=1, column=1, padx=5, pady=5)
+        division_entry.insert(0, team.division)
+
+        tk.Label(edit_window, text="Performance Coefficient:").grid(row=2, column=0, padx=5, pady=5)
+        coefficient_entry = tk.Entry(edit_window)
+        coefficient_entry.grid(row=2, column=1, padx=5, pady=5)
+        coefficient_entry.insert(0, str(team.coefficient))
+
+        def save_changes():
+            name = name_entry.get().strip()
+            division = division_entry.get().strip()
+            try:
+                coefficient = int(coefficient_entry.get().strip())
+            except ValueError:
+                messagebox.showerror("Invalid Input", "Performance Coefficient must be an integer.")
+                return
+
+            if not name or not division or coefficient <= 0:
+                messagebox.showerror("Invalid Input", "All fields are required and coefficient must be positive.")
+                return
+
+            team.name = name
+            team.division = division
+            team.coefficient = coefficient
+
+            team_label.config(text=repr(team))
+            edit_window.destroy()
+
+        save_button = tk.Button(edit_window, text="Save", command=save_changes)
+        save_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+    def remove_team(self, team, team_frame):
+        self.teams.remove(team)
+        team_frame.destroy()
 
     def upload_teams(self):
         file_path = filedialog.askopenfilename(title="Select File", filetypes=[("CSV Files", "*.csv")])
@@ -100,7 +160,7 @@ class TournamentApp:
                         return
                     team = Team(name, division, coefficient)
                     self.teams.append(team)
-                    self.teams_listbox.insert(tk.END, repr(team))
+                    self.display_team(team)
             messagebox.showinfo("Success", "Teams successfully loaded from file.")
         except Exception as e:
             messagebox.showerror("Error", f"Could not load teams from file: {str(e)}")
@@ -124,8 +184,6 @@ class TournamentApp:
             messagebox.showerror("Error", str(e))
 
     def calculate_matchups(self, teams):
-
-
         def is_valid_matchup(team1, team2):
             return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= 20
 
@@ -177,7 +235,6 @@ class TournamentApp:
             mid_y = (y1 + y2) // 2
             positions.append(mid_y)
 
-        # Restul de nivele
         current_positions = positions
         current_start_x = start_x + 50 + line_length
         while len(current_positions) > 1:
@@ -196,7 +253,6 @@ class TournamentApp:
             current_positions = next_positions
             current_start_x += line_length
 
-        # Ultima linie
         if current_positions:
             canvas.create_line(current_start_x, current_positions[0], current_start_x + line_length, current_positions[0])
 
