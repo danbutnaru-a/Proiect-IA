@@ -20,6 +20,8 @@ class TournamentApp:
         self.root.title("Tournament Bracket Generator")
         self.root.geometry("800x600")  # Dimensiunea fixă a ferestrei principale
         self.teams = []
+        self.allow_same_division = tk.BooleanVar(value=False)
+        self.max_difference = tk.StringVar(value="20")
 
         self.title_label = tk.Label(root, text="Add Teams to the Tournament", font=("Helvetica", 16))
         self.title_label.pack(pady=10)
@@ -47,6 +49,15 @@ class TournamentApp:
 
         self.upload_button = tk.Button(root, text="Upload Teams from File", command=self.upload_teams)
         self.upload_button.pack(pady=10)
+
+        self.same_division_checkbox = tk.Checkbutton(root, text="Allow same-division matchups", variable=self.allow_same_division)
+        self.same_division_checkbox.pack(pady=10)
+
+        self.max_diff_label = tk.Label(root, text="Max Coefficient Difference:")
+        self.max_diff_label.pack(pady=5)
+        self.max_diff_entry = tk.Entry(root, textvariable=self.max_difference)
+        self.max_diff_entry.pack(pady=5)
+
 
         self.generate_button = tk.Button(root, text="Generate Bracket", command=self.generate_bracket)
         self.generate_button.pack(pady=10)
@@ -206,8 +217,16 @@ class TournamentApp:
             messagebox.showerror("Error", str(e))
 
     def calculate_matchups(self, teams):
+        try:
+            max_diff = int(self.max_difference.get().strip())
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Max Coefficient Difference must be an integer.")
+            return []
+
         def is_valid_matchup(team1, team2):
-            return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= 20
+            if not self.allow_same_division.get():
+                return team1.division != team2.division and abs(team1.coefficient - team2.coefficient) <= max_diff
+            return abs(team1.coefficient - team2.coefficient) <= max_diff
 
         def forward_checking(remaining_teams, matchups):
             if len(matchups) == len(teams) // 2:
